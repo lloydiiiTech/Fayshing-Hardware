@@ -1,4 +1,4 @@
-# fayshing-hardware-project
+# fayshing-hardware
 
 ## Project setup
 ```

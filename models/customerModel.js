@@ -50,3 +50,16 @@ exports.insertCustomer = async (name, contactNumber, staffID) => {
     });
 };
   
+
+
+exports.deleteCostumer = async (staffId) => {
+  const query = 'DELETE FROM customers WHERE staffID = ?';
+  return new Promise((resolve, reject) => {
+      db.query(query, [staffId], (error, results) => {
+          if (error) {
+              return reject(error);
+          }
+          resolve(results);
+      });
+  });
+};

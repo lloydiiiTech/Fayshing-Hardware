@@ -106,20 +106,22 @@ exports.addProduct = (req, res) => {
 };
 
 exports.checkProduct = async (req, res) => {
-  const { code } = req.body;
-console.log(code);
+  const { code } = req.body; // Extract QR code from the request body
+  console.log(code); // Log the QR code for debugging
+
   try {
-    // Fetch product data based on QR code
+    // Fetch product data based on the QR code
     const product = await ProductModel.getProductByQRCode(code);
 
-    if (product.length > 0) {
-      // If product exists, return the product details
+    // If a product was found
+    if (product && product.length > 0) {
+      console.log(product);
       res.json({
         exists: true,
-        product: product[0]  // Returning the first matching product
+        product_data: product[0], // Extract product_code from the first element
       });
     } else {
-      // If product does not exist, send a response indicating this
+      // If no product found, return `exists: false`
       res.json({ exists: false });
     }
   } catch (error) {
@@ -128,6 +130,8 @@ console.log(code);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+
 
 
 exports.fetchAllProducts = async (req, res) => {

@@ -2,7 +2,6 @@ const StaffModel = require('../models/StaffModel');
 
 // Get all staff emails
 const getAllEmails = (req, res) => {
-    console.log("pasok");
     StaffModel.getAllEmails((err, emails) => {
         console.log(emails);
         if (err) {

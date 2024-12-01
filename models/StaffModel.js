@@ -17,7 +17,7 @@ const addStaff = (staffData, callback) => {
     });
   };
   const getAllEmails = (callback) => {
-    const sql = `SELECT staffEmail FROM staff`;  // Your SQL query
+    const sql = `SELECT id, staffEmail FROM staff`;  // Your SQL query
     db.query(sql, (err, rows) => {
       if (err) {
         console.error('Error fetching staff emails:', err);

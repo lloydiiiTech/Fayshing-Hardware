@@ -17,12 +17,23 @@ router.get('/products', productController.fetchAllProducts);
 router.get('/product-details/:productCode', productController.getProductDetails);
 
 router.post('/get-product-price', productController.getProductPrice);
-router.post('/add-cart', productController.addProductCart);
-router.post('/cart', productController.getCart);
+
+
+const cartController = require('../controller/cartController'); // Import customer router
+
+router.post('/add-cart', cartController.addProductCart);
+router.post('/cart', cartController.getCart);
 router.put('/costumer', customerController.getCostumerInfo);
 
-router.get('/cart/:productCode', productController.deleteProduct);
-router.post('/cart/update', productController.updateCart);
+router.get('/cart/:productCode', cartController.deleteProduct);
+router.post('/cart/update', cartController.updateCart);
+
+router.post('/cancel-order', cartController.cancelOrder);
+
+const salesinventoryController = require('../controller/salesandinventoryController'); // Import customer router
+
+router.post('/sales', salesinventoryController.submitSales);
+
 
 
 

@@ -4,8 +4,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-const StaffController = {
-  addStaff: async (req, res) => {
+
+const addStaff = async (req, res) => {
     const { staffuserName, staffName, staffEmail, staffAddress, contactNumber, mpin } = req.body;
 
     // Validation: check that all required fields are present
@@ -82,7 +82,96 @@ const StaffController = {
       console.error(error);
       res.status(500).json({ error: 'Internal server error' });
     }
-  }
-};
+  };
 
-module.exports = StaffController;
+  const getStaffInfo = async (req, res) => {
+    const { staffId } = req.params; // Extract staffId from request params
+  
+    try {
+      const staffInfo = await StaffModel.getStaffInfo(staffId);
+      if (staffInfo) {
+        res.json({
+          username: staffInfo.staffuserName,
+          name: staffInfo.staffName,
+          email: staffInfo.staffEmail,
+          address: staffInfo.staffAddress,
+          contact: staffInfo.contactNumber,
+          staffStatus: staffInfo.status,
+        });
+      } else {
+        res.status(404).json({ error: 'Staff not found' });
+      }
+    } catch (error) {
+      console.error('Error in getStaffInfo:', error.message);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  };
+
+  const updateProfile = async (req, res) => {
+    const { staffID } = req.params;
+    const { username, name, address, contact } = req.body;
+  
+    if (!name || !address || !contact) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+  
+    try {
+      const result = await StaffModel.updateStaffProfile(staffID, { username, name, address, contact });
+      
+      if (result.affectedRows > 0) {
+        return res.status(200).json({ message: 'Profile updated successfully.' });
+      } else {
+        return res.status(404).json({ message: 'Staff not found.' });
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      res.status(500).json({ message: 'An error occurred while updating profile.' });
+    }
+  };
+  const changeMPIN = async (req, res) => {
+    const { staffID } = req.params;
+    const { mpin } = req.body;
+
+    // Basic validation for MPIN
+    if (!mpin || mpin.length !== 6 || !/^\d{6}$/.test(mpin)) {
+        return res.status(400).json({
+            message: 'MPIN must be a 6-digit number.',
+        });
+    }
+
+    try {
+        // Hash the MPIN before storing it in the database
+        const hashedMPIN = await bcrypt.hash(mpin, 10); // 10 is the salt rounds for bcrypt
+
+        // Update the MPIN using the model, passing the hashed MPIN
+        const isUpdated = await StaffModel.updateMPIN(staffID, hashedMPIN);
+
+        if (isUpdated) {
+            return res.status(200).json({
+                message: 'MPIN successfully updated.',
+            });
+        } else {
+            return res.status(404).json({
+                message: 'Staff ID not found or MPIN update failed.',
+            });
+        }
+    } catch (error) {
+        console.error('Error updating MPIN:', error);
+        return res.status(500).json({
+            message: 'An error occurred while updating the MPIN. Please try again.',
+        });
+    }
+};
+  
+  
+  
+  
+
+
+module.exports = {
+  addStaff,
+  getStaffInfo,
+  updateProfile,
+  changeMPIN
+
+};

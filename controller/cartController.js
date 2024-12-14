@@ -105,6 +105,7 @@ exports.addProductCart = async (req, res) => {
   
     const cart = req.body.cart;
   
+    console.log(cart);
     if (!Array.isArray(cart)) {
         console.log('Invalid cart data received:', req.body); // Log invalid data
         return res.status(400).json({ message: 'Invalid cart data' });

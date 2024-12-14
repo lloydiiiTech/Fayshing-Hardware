@@ -27,10 +27,13 @@
 
       <!-- Product List Container -->
       <div class="productcontainer">
-        <div class="product-line" v-for="(product, index) in products" :key="index">
+        <div class="product-line" 
+            v-for="(product, index) in products" 
+            :key="index" 
+            :class="{'error-row': product.error}">
           <div class="product-col col1">
             <div class="product-name">{{ product.product_name }}</div>
-            <div class="product-">{{ product.category1 }}</div>
+            <div class="product-category1">{{ product.category1 }}</div>
             <div class="product-size">{{ product.category2 }}</div>
           </div>
           <div class="product-col col2">{{ product.product_price }}</div>
@@ -40,7 +43,9 @@
             </div>
           </div>
           <div class="product-col col4">{{ (product.quantity * product.product_price).toFixed(2) }}</div>
+          <div class="product-error" v-if="product.error">{{ product.error }}</div>
         </div>
+
       </div>
 
       <!-- Overall Totals -->
@@ -81,7 +86,7 @@
 
       <div class="row staff-section">
         <label for="staffName">Staff</label>
-        <input type="text" id="staffName" class="textbox-staff" v-model="staffName" placeholder="Enter Staff Name" />
+        <input type="text" id="staffName" class="textbox-staff" v-model="staffName" placeholder="Enter Staff Name" readonly />
       </div>
 
         <div class="submitcontainer">
@@ -164,11 +169,12 @@ export default {
         });
 
         const cartData = await cartResponse.json();
+        console.log(cartData);
 
-        if (cartData.products) {
+        if (cartData.products[0]) {
           this.products = cartData.products;
         } else {
-          console.warn('No products found in cart');
+          this.$router.push("/order-product");
         }
 
         // Fetch customer data
@@ -187,67 +193,75 @@ export default {
             this.customername = customer.name || 'Unknown';
             this.customercontact_number = customer.contact_number || 'N/A';
           } else {
-            console.warn('Customer data not found or invalid format');
+            this.$router.push("/customername");
           }
         } catch (error) {
           console.error('Error fetching data:', error);
         }
       },
     submitOrder() {
-  // Check if the payment is sufficient
+      // Check if the payment is sufficient
 
-  const session = JSON.parse(sessionStorage.getItem('staffSession'));
-  if (this.amountPaid < this.totalPrice) {
-    return;
-  }
-
-  if (!this.staffName || !this.selectedPaymentMethod) {
-    return;
-  }
-
-  const saleData = {
-    customer_name: this.customername || "Unknown",
-    customer_contact: this.customercontact_number || "N/A",
-    purchase_type: document.getElementById('purchaseType').value,
-    products: this.products.map(product => ({
-      product_detail_id: product.product_detail_id,
-      product_id: product.id, // Ensure the product object has an `id`
-      product_name: product.product_name,
-      product_selection: product.category1 + " " + product.category2,
-      quantity: product.quantity,
-      price: product.product_price,
-      subtotal: product.quantity * product.product_price,
-    })),
-    total_items: this.totalItems,
-    total_quantity: this.totalQuantity,
-    total_price: this.totalPrice,
-    payment_method: this.selectedPaymentMethod,
-    amount_paid: this.amountPaid,
-    change: parseFloat(this.changeAmount),
-    staff_id: session.id,
-    staff_name: this.staffName,
-  };
-
-  fetch('http://localhost:2313/staff/sales', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(saleData),
-  })
-    .then(async response => {
-      const result = await response.json();
-      if (response.ok) {
-        alert('Order submitted successfully!');
-        this.$router.push('/receipt'); // Redirect to receipt page
-      } else {
-        alert(`Error: ${result.message}`);
+      const session = JSON.parse(sessionStorage.getItem('staffSession'));
+      if (this.amountPaid < this.totalPrice) {
+        return;
       }
-    })
-    .catch(error => {
-      console.error('Error submitting order:', error);
-      alert('An error occurred while submitting the order.');
-    });
-},
-  },
+
+      if (!this.staffName || !this.selectedPaymentMethod) {
+        return;
+      }
+
+      const saleData = {
+        customer_name: this.customername || "Unknown",
+        customer_contact: this.customercontact_number || "N/A",
+        purchase_type: document.getElementById('purchaseType').value,
+        products: this.products.map(product => ({
+          product_detail_id: product.product_detail_id,
+          product_id: product.product_code, // Ensure the product object has an `id`
+          product_name: product.product_name,
+          product_selection: product.category1 + " " + product.category2,
+          quantity: product.quantity,
+          price: product.product_price,
+          subtotal: product.quantity * product.product_price,
+        })),
+        total_items: this.totalItems,
+        total_quantity: this.totalQuantity,
+        total_price: this.totalPrice,
+        payment_method: this.selectedPaymentMethod,
+        amount_paid: this.amountPaid,
+        change: parseFloat(this.changeAmount),
+        staff_id: session.id,
+        staff_name: this.staffName,
+      };
+
+      fetch('http://localhost:2313/staff/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saleData),
+      })
+        .then(async response => {
+          const result = await response.json();
+          if (response.ok) {
+
+            // Extract salesId from the response
+            const salesId = result.salesId;
+
+
+            // Pass salesId to the /receipt route using Vue Router
+            sessionStorage.setItem('receiptSession', JSON.stringify(salesId));
+
+            this.$router.push({ name: 'ReceiptView'}); // Use `params` here
+          } else {
+            alert(`Error: ${result.message}`);
+          }
+        })
+        .catch(error => {
+          console.error('Error submitting order:', error);
+          alert('An error occurred while submitting the order.');
+        });
+
+          },
+        },
   mounted() {
     const session = JSON.parse(sessionStorage.getItem('staffSession'));
     if (!session) {

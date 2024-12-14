@@ -8,6 +8,10 @@ import PaymentView from '../views/PaymentView.vue'
 import ReceiptView from '../views/ReceiptView.vue'
 import CustomerName from '../components/CustomerName.vue'
 
+import ProfileView from '../views/ProfileView.vue'
+
+import ForgotMPIN from '../views/ForgotMPIN.vue'
+
 
 
 const routes = [
@@ -17,9 +21,26 @@ const routes = [
     component: MPINView
   },
   {
+    path: '/login',
+    name: 'mpinn',
+    component: MPINView
+  },
+
+  {
+    path: '/forgot-MPIN',
+    name: 'ForgotMPIN',
+    component: ForgotMPIN
+  },
+
+  {
     path: '/home',
     name: 'home',
     component: HomeView
+  },
+  {
+    path: '/profile', // Expect `salesId` as a param
+    name: 'ProfileView',
+    component: ProfileView,
   },
   {
     path: '/scanned-product',
@@ -39,13 +60,14 @@ const routes = [
   {
     path: '/payment',
     name: 'PaymentView',
-    component: PaymentView
+    component: PaymentView,
   },
   {
-    path: '/receipt',
+    path: '/receipt', // Expect `salesId` as a param
     name: 'ReceiptView',
-    component: ReceiptView
+    component: ReceiptView,
   },
+  
   {
     path: '/customername',
     name: 'CustomerName',

@@ -24,6 +24,9 @@
                     readonly
                 >
             </div>
+            <div v-if="cartWarning" class="warning-message">
+    {{ cartWarning }}
+</div>
 
             <div class="product-container">
                 <!-- Loop through products fetched from the API -->
@@ -35,17 +38,35 @@
                     </div>
                     <div class="product-col col2">{{ product.product_price }}</div>
                     <div class="product-col col3">
-                        <div class="quantitycontainer">
-                            <input type="text" class="quantity-input" v-model="product.quantity" readonly>
-                            <div class="arrow-container">
-                                <button @click="increaseQuantity(product)" class="arrow-button arrow-up">▲</button>
-                                <button @click="decreaseQuantity(product)" class="arrow-button arrow-down">▼</button>
-                            </div>
-                        </div>
-                    </div>
+    <button class="arrow-button arrow-up" @click="increaseQuantity(product)">▲</button>
+    <div class="quantitycontainer">
+        <input 
+            type="text" 
+            class="quantity-input" 
+            v-model="product.quantity" 
+            readonly
+        >
+    
+        <p v-if="product.quantity >= product.stock" class="stock-warning">
+        </p>
+    </div>
+    <button class="arrow-button arrow-down" @click="decreaseQuantity(product)">▼</button>
+
+</div>
+
+                    
                     <div class="product-col col4">{{ product.quantity * product.product_price }}</div>
                     <div class="product-col col5">
-                        <button @click="deleteProduct(index)" class="delete-icon">🗑️</button>
+                        <button @click="deleteProduct(index)" class="delete-icon">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    class="icon"
+  >
+    <path d="M9 3v1H4v2h16V4h-5V3H9zm11 5H4v13c0 .55.45 1 1 1h14c.55 0 1-.45 1-1V8zM8 10h2v9H8v-9zm6 0h2v9h-2v-9z" />
+  </svg>
+</button>
                     </div>
                 </div>
             </div>
@@ -96,6 +117,7 @@ export default {
             customername: '', // Initialize customer name
             customercontact_number: '',
             showModal: false, 
+            cartWarning: '',
         };
     },
     computed: {
@@ -107,6 +129,7 @@ export default {
         },
     },
     methods: {
+        
         // Fetch the cart data from the backend when the component is mounted
         async fetchCartData() {
             try {
@@ -116,6 +139,9 @@ export default {
             console.error("Staff ID is not available in the session.");
             return;
         }
+
+            
+        
 
         // Fetch cart data
         const cartResponse = await fetch('http://localhost:2313/staff/cart', {
@@ -127,11 +153,15 @@ export default {
         });
 
         const cartData = await cartResponse.json();
-
         if (cartData.products) {
-            this.products = cartData.products;
+            this.products = cartData.products.map(product => {
+                if (product.quantity > product.stock) {
+                    product.quantity = product.stock; // Adjust quantity to match stock
+                }
+                return product;
+            });
         } else {
-            console.warn('No products found in cart');
+            console.error('No products found in cart');
         }
 
         const customerResponse = await fetch('http://localhost:2313/staff/costumer', {
@@ -158,14 +188,17 @@ export default {
 
         // Method to increase the quantity of a product
         increaseQuantity(product) {
+        if (product.quantity < product.stock) {
             product.quantity++;
-        },
-        // Method to decrease the quantity of a product (ensure quantity is at least 1)
-        decreaseQuantity(product) {
-            if (product.quantity > 1) {
-                product.quantity--;
-            }
-        },
+        } 
+    },
+
+    // Method to decrease the quantity of a product (ensure quantity is at least 1)
+    decreaseQuantity(product) {
+        if (product.quantity > 1) {
+            product.quantity--;
+        }
+    },
         // Method to delete a product from the cart (just removes it from the array for now)
         deleteProduct(index) {
     const product = this.products[index];
@@ -189,15 +222,12 @@ export default {
             if (response.ok) {
                 // Remove the product from the UI
                 this.products.splice(index, 1);
-                alert(result.message || 'Product remove successfully');
             } else {
                 console.error('Error:', result.message);
-                alert(result.message || 'Failed to remove product');
             }
         })
         .catch((error) => {
             console.error('Error deleting product:', error);
-            alert('An error occurred while deleting the product.');
         });
         },
 
@@ -229,11 +259,9 @@ export default {
                 const result = await response.json();
 
                 if (response.ok) {
-                    alert(result.message || 'Order cancelled successfully');
                     this.$router.push('/home');
                 } else {
                     console.error('Error:', result.message);
-                    alert(result.message || 'Failed to cancel order');
                 }
             } catch (error) {
                 console.error('Error cancelling order:', error);
@@ -243,36 +271,40 @@ export default {
             }
         },
 
-submitOrder() {
-    const cartData = this.products.map(product => ({
-        product_code: product.product_code,
-        quantity: product.quantity
-    }));
+        submitOrder() {
+            const cartData = this.products.map(product => ({
+                product_code: product.product_detail_id,
+                quantity: product.quantity
+            }));
 
-    console.log('Submitting cart data:', cartData); // Log cart data
-
-    fetch('http://localhost:2313/staff/cart/update', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cart: cartData }),
-    })
-        .then(async (response) => {
-            const result = await response.json();
-            console.log('Server response:', response.status, result); // Log server response
-
-            if (response.ok) {
-                this.$router.push('/payment');
-            } else {
-                alert(result.message || 'Failed to update cart');
+            if (cartData.length === 0 || cartData.every(item => item.quantity === 0)) {
+                this.cartWarning = 'Please add items to your cart before proceeding to payment.';
+                return; // Stop execution
             }
-        })
-        .catch((error) => {
-            console.error('Error updating cart:', error); // Log the error
-            alert('An error occurred while submitting the order.');
-        });
-},
+            console.log('Submitting cart data:', cartData); // Log cart data
+
+            fetch('http://localhost:2313/staff/cart/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cart: cartData }),
+            })
+                .then(async (response) => {
+                    const result = await response.json();
+                    console.log('Server response:', response.status, result); // Log server response
+
+                    if (response.ok) {
+                        this.$router.push('/payment');
+                    } else {
+                        alert(result.message || 'Failed to update cart');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error updating cart:', error); // Log the error
+                    alert('An error occurred while submitting the order.');
+                });
+        },
         // Navigate back to home page
         goToHome() {
             this.$router.push('/home');
@@ -284,15 +316,50 @@ submitOrder() {
     // Fetch the cart data when the component is mounted
     mounted() {
         const session = sessionStorage.getItem('staffSession');
-    if (!session) {
-      this.$router.push('/login'); // Redirect to login page
-    }
+        if (!session) {
+            this.$router.push('/login'); // Redirect to login page if session is missing
+            return;
+        }
+    
+        
+    
         this.fetchCartData();
     }
 };
 </script>
 
 <style>
+.delete-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-icon .icon {
+  width: 24px;
+  height: 24px;
+  color: #d9534f; /* Default color */
+  transition: color 0.3s;
+}
+
+.delete-icon:hover .icon {
+  color: #c9302c; /* Hover color */
+}
+
+.delete-icon:active .icon {
+  color: #ac2925; /* Active color */
+}
+
+.warning-message {
+    color: red;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -431,7 +498,7 @@ html, body {
 }
 
 .product-col {
-    padding: 5px;
+    padding: 1px;
 }
 
 .col1 {
@@ -449,45 +516,61 @@ html, body {
     color: #555;
 }
 
-.quantity-container {
-    display: flex;
-    align-items: center;
-    position: relative; /* To position the arrows inside */
+.quantity {
+    display: flex; /* Use flexbox for layout */
+    flex-direction: column; /* Stack label and quantity container vertically */
+    margin-bottom: 10px; /* Space below each row */
+    width: 1000px;
+}
+
+.quantity-wrapper {
+    display: flex; /* Use flexbox for the quantity wrapper */
+    align-items: center; /* Center items vertically */
+    width: 100%;
+}
+
+.quantitycontainer {
+    display: flex; /* Use flexbox for the quantity container */
+    align-items: center; /* Center items vertically */
+    border: 1px solid rgb(233, 161, 29); /* Border around the container */
+    border-radius: 4px; /* Rounded corners */
+    width: 100%; /* Fixed width for the quantity container */
 }
 
 .quantity-input {
-    width: 50px; /* Fixed width for quantity input */
-    text-align: left;
-    border: 1px solid rgb(233, 161, 29);
-    border-radius: 5px;
-    padding: 7px;
-    font-size: 14px;
-    position: relative; /* To position arrows inside */
-}
-
-.arrow-container {
-    display: flex;
-    flex-direction: column; /* Stack the arrows vertically */
-    position: absolute; /* Absolute positioning for arrows */
-    right: 5px; /* Position arrows inside the input box */
-    top: 0; /* Align to the top */
-    gap: 0; /* No gap between the arrows */
-    margin-top: 19px;
+    width: 60px; /* Fixed width for the input */
+    text-align: center; /* Center the input value */
+    border: none; /* Remove default border */
+    outline: none; /* Remove outline on focus */
+    padding: 5px; /* Padding for the input */
+    font-size: 16px; /* Increase font size for better readability */
 }
 
 .arrow-button {
-    color: rgb(241, 180, 12); /* Text color for arrows */
-    border: none;
-    border-radius: 5px;
+    background-color: #f0f0f0; /* Light background for buttons */
+    border: 1px solid rgb(233, 161, 29); /* Border color */
+    border-radius: 4px; /* Rounded corners */
     cursor: pointer; /* Pointer cursor on hover */
-    padding: 2px; /* Smaller padding for compactness */
-    font-size: 10px; /* Smaller font size for arrows */
-    width: 20px; /* Fixed width for arrows */
-    height: 20px; /* Fixed height for arrows */
-    line-height: 0; /* Line height adjustment */
-    margin-top: -7px;
+    padding: 15px !important; /* Increased padding for larger buttons */
+    font-size: 28px !important; /* Increased font size for larger buttons */
+    width: 70px !important; /* Increased width for buttons */
+    height: 10px !important;
+    display: flex; /* Flexbox for centering */
+    align-items: center; /* Center items vertically */
+    justify-content: center; /* Center items horizontally */
 }
 
+/* Hover effect for buttons */
+.arrow-button:hover {
+    background-color: rgb(233, 161, 29); /* Change background on hover */
+    color: white; /* Change text color on hover */
+}
+
+/* Optional: Add focus effect to input */
+.quantity-input:focus {
+    border: 1px solid rgb(233, 161, 29); /* Highlight border on focus */
+    background-color: #f9f9f9; /* Light background on focus */
+}
 .delete-icon {
     cursor: pointer;
     border: none;

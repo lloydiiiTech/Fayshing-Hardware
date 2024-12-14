@@ -3,13 +3,10 @@
     <div class="camera-container">
       <div class="header">
         <img src="../assets/logo_white.png" alt="Logo" class="logo" />
-        <div class="profile-container" @click="toggleDropdown">
+        <div class="profile-container" @click="goToProfile">
           <img src="../assets/profile.png" alt="Profile" class="profile-picture" />
-          <div v-if="isDropdownVisible" class="dropdown-menu">
-            <p>user name</p>
-            <a @click="logout" href="/" class="dropdown-logout">LOGOUT</a>
-          </div>
         </div>
+
       </div>
 
       <!-- QR Code Scanner -->
@@ -70,6 +67,9 @@ export default {
     }
   },
   methods: {
+    goToProfile() {
+      this.$router.push('/profile'); // Navigate to the /profile route
+    },
     async checkTableEmpty() {
       try {
         const session = JSON.parse(sessionStorage.getItem("staffSession"));
@@ -172,9 +172,9 @@ export default {
       const productCode = response.data.product_data.product_code;
 
       // Navigate to the scanned-product page, passing only product_code
+      sessionStorage.setItem('productSession', JSON.stringify(productCode));
       this.$router.push({
         path: "/scanned-product",
-        query: { productCode }, // Sending only the product_code
       });
     } else {
       // Show alert if the product doesn't exist

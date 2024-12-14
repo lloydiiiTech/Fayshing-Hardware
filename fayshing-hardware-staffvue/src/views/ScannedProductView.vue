@@ -5,7 +5,7 @@
         <img src="../assets/logo_orange.png" alt="Logo" />
       </div>
       <div class="row title">
-        <h1>Manual Encoding</h1>
+        <h1>Scanned Product</h1>
       </div>
       <div class="row ">
       <div class="row search-container"> 
@@ -85,20 +85,23 @@
 
       <div class="row quantity">
         <label>Quantity</label>
-        <div class="quantitycontainer">
-          <input
-            type="number"
-            class="textbox quantity-input"
-            v-model="quantity"
-            min="1"
-            @input="calculateTotalPrice"
-          />
-          <div class="arrow-container">
-            <span class="arrow-up" @click="increaseQuantity"></span>
-            <span class="arrow-down" @click="decreaseQuantity"></span>
-          </div>
+        <div class="quantity-wrapper">
+            <button class="arrow-button arrow-down" @click="decreaseQuantity">-</button>
+            <div class="quantitycontainer">
+                <input
+                    type="number"
+                    class="textbox quantity-input"
+                    v-model="quantity"
+                    :min="1"
+                    :max="stock"
+                    @input="validateQuantity"
+                />
+            </div>
+            <button class="arrow-button arrow-up" @click="increaseQuantity">+</button>
         </div>
+        <p v-if="stockMessage" :class="stockMessageClass">{{ stockMessage }}</p>
       </div>
+
 
       <div class="row">
         <label>Total Price</label>
@@ -129,6 +132,7 @@ export default {
       selectedProduct: null,
       selectedProductPrice: 0,
       productDetailsID: 0,
+      stock: 0,
       productDetails: null,
       selectedColor: '',
       selectedLiter: '',
@@ -183,27 +187,41 @@ export default {
   },
   methods: {
     goToHome() {
+      sessionStorage.removeItem('productSession');
       this.$router.push('/home');
     },
     ViewCart() {
       this.$router.push('/ordered-product');
     },
+    validateQuantity() {
+      if (this.quantity > this.stock) {
+        this.quantity = this.stock; // Reset to max stock if exceeded
+        this.showStockWarning();
+      } else if (this.quantity < 1) {
+        this.quantity = 1; // Ensure minimum is 1
+      }
+    },
     increaseQuantity() {
-      this.quantity++;
+      if (this.quantity < this.stock) {
+        this.quantity++;
+      } else {
+        this.showStockWarning();
+      }
     },
     decreaseQuantity() {
       if (this.quantity > 1) {
         this.quantity--;
       }
     },
-    searchProducts() {
-      // Logic handled by the computed property
+    showStockWarning() {
+      this.stockMessage = `Only ${this.stock} items available in stock.`;
+      this.stockMessageClass = 'warning';
     },
 
     
     AddtoCart() {
   const session = JSON.parse(sessionStorage.getItem('staffSession'));
-
+  sessionStorage.removeItem('productSession');
   if (!session?.id) {
     console.error("Staff ID is not available in the session.");
     return;
@@ -255,7 +273,7 @@ export default {
 
     PurchaceOrder() {
       const session = JSON.parse(sessionStorage.getItem('staffSession'));
-
+      sessionStorage.removeItem('productSession');
       if (!session?.id) {
         console.error("Staff ID is not available in the session.");
         return;
@@ -307,7 +325,7 @@ export default {
 
         
     fetchProductDetailsFromQuery() {
-      const productData = this.$route.query.productCode;
+      const productData = JSON.parse(sessionStorage.getItem('productSession'));;
 
       // Log the raw productData for debugging
       console.log("Raw productData:", productData);
@@ -437,6 +455,8 @@ export default {
             const { message, productData } = response.data;
             this.selectedProductPrice = productData?.price || 0;
             this.productDetailsID = productData?.detail_id || 0;
+            this.stock = productData?.stock || 0;
+
             if (message.includes('Low Stock')) {
               this.stockMessage = message;
               this.stockMessageClass = 'low-stock';
@@ -466,18 +486,27 @@ export default {
     },
   },
   mounted() {
-    const session = sessionStorage.getItem('staffSession');
-    if (!session) {
-      this.$router.push('/login'); // Redirect to login page
-    }
+  const staffSession = sessionStorage.getItem('staffSession');
+  if (!staffSession) {
+    this.$router.push('/login'); // Redirect to login page
+    return; // Prevent further execution
+  }
 
-    axios.get('http://localhost:2313/staff/products').then(response => {
-      this.products = response.data;
-    });
+  const productSession = sessionStorage.getItem('productSession');
+  if (!productSession) {
+    this.$router.go(-1); // Go back to the previous page
+    return; // Prevent further execution
+  }
 
-    this.fetchProductDetailsFromQuery(); 
+  // Fetch the list of products
+  axios.get('http://localhost:2313/staff/products').then(response => {
+    this.products = response.data;
+  });
 
-  },
+  // Fetch product details from query parameters
+  this.fetchProductDetailsFromQuery(); 
+}
+
 };
 </script>
 
@@ -633,51 +662,61 @@ label {
   background-color: rgb(233, 161, 29); /* White inner circle */
 }
 
+.quantity {
+    display: flex; /* Use flexbox for layout */
+    flex-direction: column; /* Stack label and quantity container vertically */
+    margin-bottom: 10px; /* Space below each row */
+    width: 1000px;
+}
+
+.quantity-wrapper {
+    display: flex; /* Use flexbox for the quantity wrapper */
+    align-items: center; /* Center items vertically */
+    width: 100%;
+}
+
 .quantitycontainer {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  position: relative;
-  border: 1px solid rgb(233, 161, 29);
- border-radius: 4px;
- padding:2px;
+    display: flex; /* Use flexbox for the quantity container */
+    align-items: center; /* Center items vertically */
+    border: 1px solid rgb(233, 161, 29); /* Border around the container */
+    border-radius: 4px; /* Rounded corners */
+    width: 100%; /* Fixed width for the quantity container */
 }
 
 .quantity-input {
-  width: 100%;
-  text-align: left;
-  border-radius: 5px;
-  padding-right: 30px;
+    width: 60px; /* Fixed width for the input */
+    text-align: center; /* Center the input value */
+    border: none; /* Remove default border */
+    outline: none; /* Remove outline on focus */
+    padding: 5px; /* Padding for the input */
+    font-size: 16px; /* Increase font size for better readability */
 }
 
-.arrow-container {
-  position: absolute;
-  right: 5px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+.arrow-button {
+    background-color: #f0f0f0; /* Light background for buttons */
+    border: 1px solid rgb(233, 161, 29); /* Border color */
+    border-radius: 4px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+    padding: 15px !important; /* Increased padding for larger buttons */
+    font-size: 28px !important; /* Increased font size for larger buttons */
+    width: 50px !important; /* Increased width for buttons */
+    height: 30px !important;
+    display: flex; /* Flexbox for centering */
+    align-items: center; /* Center items vertically */
+    justify-content: center; /* Center items horizontally */
 }
 
-.arrow-up, .arrow-down {
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  cursor: pointer;
+/* Hover effect for buttons */
+.arrow-button:hover {
+    background-color: rgb(233, 161, 29); /* Change background on hover */
+    color: white; /* Change text color on hover */
 }
 
-.arrow-up {
-  border-bottom: 10px solid rgb(233, 161, 29);
-  margin-bottom: 2px;
+/* Optional: Add focus effect to input */
+.quantity-input:focus {
+    border: 1px solid rgb(233, 161, 29); /* Highlight border on focus */
+    background-color: #f9f9f9; /* Light background on focus */
 }
-
-.arrow-down {
-  border-top: 10px solid rgb(233, 161, 29);
-  margin-bottom: 2px;
-}
-
 .submit {
   display: flex;
   justify-content: center;

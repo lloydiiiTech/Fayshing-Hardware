@@ -67,9 +67,20 @@ exports.updateCartQuantity = (cart_id, newQuantity) => {
     });
 };
 
-
 exports.getCartItems = (staffId, callback) => {
-    const query = `SELECT * FROM cart WHERE staffID = ?`; // Use a variable in the query
+    const query = `
+        SELECT 
+            c.*, 
+            pd.stock 
+        FROM 
+            cart c
+        JOIN 
+            product_details pd 
+        ON 
+            c.product_detail_id = pd.detail_id
+        WHERE 
+            c.staffID = ?;
+    `;
     db.query(query, [staffId], (err, results) => {
         if (err) {
             return callback(err);
@@ -77,7 +88,8 @@ exports.getCartItems = (staffId, callback) => {
         callback(null, results);
     });
 };
-  
+
+
 
 exports.deleteProduct = (productCode, callback) => {
     const query = 'DELETE FROM cart WHERE id = ?';
@@ -94,7 +106,8 @@ exports.updateCartItems = (cart) => {
         cart.map((product) => {
             console.log('Updating product:', product); // Log product data
             return new Promise((resolve, reject) => {
-                const query = 'UPDATE cart SET quantity = ? WHERE product_code = ?';
+                const query = 'UPDATE cart SET quantity = ? WHERE product_detail_id = ?';
+            console.log(product.quantity, product.product_detail_id);
                 db.query(query, [product.quantity, product.product_code], (err, result) => {
                     if (err) {
                         console.error('Error in database query:', err); // Log query error
@@ -123,3 +136,5 @@ exports.deleteCartByStaffId = async (staffId) => {
         });
     });
 };
+
+

@@ -33,6 +33,13 @@ router.post('/cancel-order', cartController.cancelOrder);
 const salesinventoryController = require('../controller/salesandinventoryController'); // Import customer router
 
 router.post('/sales', salesinventoryController.submitSales);
+router.get('/sales/:salesId', salesinventoryController.getSaleDetails);
+
+
+const staffController = require('../controller/staffController');
+router.get('/profile/:staffId', staffController.getStaffInfo);
+router.put('/update-profile/:staffID', staffController.updateProfile);
+router.put('/change-mpin/:staffID', staffController.changeMPIN);
 
 
 

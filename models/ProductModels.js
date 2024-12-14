@@ -165,5 +165,171 @@ exports.fetchProductDetails = (productCode, productDetails) => {
       );
     });
   };
+  exports.selectStock = (productId, productDetailId) => {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT stock
+            FROM product_details
+            WHERE product_code = ? AND detail_id = ?
+        `;
+        const params = [productId, productDetailId];
+
+        // Execute the query
+        db.execute(query, params, (err, rows) => {
+            if (err) {
+                console.error('Error in selectStock:', err.message);
+                reject(new Error('Failed to retrieve stock.'));
+            } else {
+                if (rows.length > 0) {
+                    resolve(rows[0]); // Return the stock data directly if found
+                } else {
+                    reject(new Error(`Product detail not found for product_code ${productId} and detail_id ${productDetailId}`));
+                }
+            }
+        });
+    });
+};
+exports.updateInventory = (productId, productDetailId, quantity) => {
+    return new Promise((resolve, reject) => {
+        const query = `
+            UPDATE product_details
+            SET stock = ?
+            WHERE product_code = ? AND detail_id = ?
+        `;
+        const params = [quantity, productId, productDetailId];
+
+        // Execute the update query
+        db.execute(query, params, (err, result) => {
+            if (err) {
+                console.error('Error in updateInventory:', err.message);
+                reject(new Error('Failed to update inventory.'));
+            } else {
+                if (result.affectedRows === 0) {
+                    reject(new Error(`No product detail found for product_code ${productId} and detail_id ${productDetailId}`));
+                } else {
+                    console.log(`Inventory updated: Product ID ${productId}, Detail ID ${productDetailId}, Quantity ${quantity}`);
+                    resolve(); // Resolve the promise on successful update
+                }
+            }
+        });
+    });
+};
+
+
+exports.restock = (productId, price, quantity) => {
+    return new Promise((resolve, reject) => {
+      const query = `
+        UPDATE product_details
+        SET stock = stock + ?, price = ?
+        WHERE detail_id = ?
+      `;
+      const params = [
+        quantity || 0,    // Default quantity to 0 if undefined
+        price || null,    // Default price to null if undefined
+        productId,
+      ];
   
+  
+      db.execute(query, params, (err, result) => {
+        if (err) {
+          console.error('Error in restock:', err.message);
+          return reject(new Error('Failed to update inventory.'));
+        }
+  
+        if (result.affectedRows === 0) {
+          return reject(new Error(`No product found with detail_id ${productId}.`));
+        }
+  
+        resolve(); // Resolve on success
+      });
+    });
+  };
+
+  
+exports.deduct = (productId, price, quantity) => {
+    return new Promise((resolve, reject) => {
+      const query = `
+        UPDATE product_details
+        SET stock = stock - ?, price = ?
+        WHERE detail_id = ?
+      `;
+      const params = [
+        quantity || 0,    // Default quantity to 0 if undefined
+        price || null,    // Default price to null if undefined
+        productId,
+      ];
+  
+      console.log('Executing query:', { query, params }); // Log SQL query and parameters
+  
+      // Execute the query
+      db.execute(query, params, (err, result) => {
+        if (err) {
+          console.error('Error in restock:', err.message);
+          return reject(new Error('Failed to update inventory.'));
+        }
+  
+        if (result.affectedRows === 0) {
+          return reject(new Error(`No product found with detail_id ${productId}.`));
+        }
+  
+        resolve(); // Resolve on success
+      });
+    });
+  };
+  
+
+  
+  exports.productDetail = (productId) => {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT *
+        FROM product_details
+        WHERE detail_id = ?
+      `;
+      const params = [productId];
+  
+      // Execute the query
+      db.execute(query, params, (err, rows) => {
+        if (err) {
+          console.error('Error in selectStock:', err.message);
+          reject(new Error('Failed to retrieve stock.'));
+        } else {
+          // Log the retrieved rows before resolving
+          console.log('Retrieved rows:', rows);
+  
+          if (rows.length > 0) {
+            // Log the first row (which will be resolved)
+            console.log('First product detail:', rows[0]);
+  
+            resolve(rows[0]); // Return the first row directly if found
+          } else {
+            reject(new Error(`Product detail not found for product_code ${productId}`));
+          }
+        }
+      });
+    });
+  };
+  
+
+  exports.saveInventory = (productId, productDetailId, quantity, changes, updatedStock, subtotal) => {
+    console.log(productId, productDetailId, quantity, changes, updatedStock, subtotal);
+    return new Promise((resolve, reject) => {
+      const query = `
+        INSERT INTO inventory (product_code, product_detail_id, quantity, changes_type, updated_stock, sub_total, date)
+        VALUES (?, ?, ?, ?, ?, ?, NOW())
+      `;
+      const params = [productId, productDetailId, quantity, changes, updatedStock, subtotal];
+  
+      // Execute the insert query
+      db.execute(query, params, (err, result) => {
+        if (err) {
+          console.error('Error in saveInventory:', err.message);
+          reject(new Error('Failed to save inventory.'));
+        } else {
+          console.log(`Inventory saved: Product ID: ${productId}, Detail ID: ${productDetailId}, Quantity: ${quantity}`);
+          resolve(result.insertId); // Resolve with the generated inventory ID if needed
+        }
+      });
+    });
+  };
   
